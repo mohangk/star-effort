@@ -31,20 +31,19 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="task-description">🚀 Mission Description:</label>
-                        <textarea id="task-description" name="description" placeholder="What amazing task was completed? (e.g., Cleaned my room, Helped with dishes, Finished homework...)" required></textarea>
+                        <label for="mission-select">🚀 Choose Mission:</label>
+                        <select id="mission-select" name="missionId" required>
+                            <option value="">Choose your mission...</option>
+                            <!-- Missions will be populated by JavaScript -->
+                        </select>
                     </div>
 
-                    <div class="form-group">
-                        <label for="star-dollars">⭐ Star Dollars Earned (1-5):</label>
-                        <select id="star-dollars" name="starDollars" required>
-                            <option value="">Choose star dollars...</option>
-                            <option value="1">⭐ 1 Star Dollar</option>
-                            <option value="2">⭐⭐ 2 Star Dollars</option>
-                            <option value="3">⭐⭐⭐ 3 Star Dollars</option>
-                            <option value="4">⭐⭐⭐⭐ 4 Star Dollars</option>
-                            <option value="5">⭐⭐⭐⭐⭐ 5 Star Dollars</option>
-                        </select>
+                    <div class="form-group mission-preview" id="mission-preview" style="display: none;">
+                        <div class="mission-details">
+                            <strong>Mission Details:</strong>
+                            <div id="selected-mission-description"></div>
+                            <div id="selected-mission-reward"></div>
+                        </div>
                     </div>
 
                     <div class="form-buttons">
@@ -66,10 +65,33 @@
 
     <script src="script.js"></script>
     <script>
-        // Set today's date as default
+        // Initialize add task page
         document.addEventListener('DOMContentLoaded', function() {
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('task-date').value = today;
+            
+            // Load missions dropdown
+            loadMissionsDropdown();
+            
+            // Set up mission selection preview
+            const missionSelect = document.getElementById('mission-select');
+            const missionPreview = document.getElementById('mission-preview');
+            const missionDescription = document.getElementById('selected-mission-description');
+            const missionReward = document.getElementById('selected-mission-reward');
+            
+            missionSelect.addEventListener('change', function() {
+                if (this.value) {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const description = selectedOption.dataset.description;
+                    const starDollars = selectedOption.dataset.starDollars;
+                    
+                    missionDescription.textContent = description;
+                    missionReward.innerHTML = `Reward: ${getStarEmoji(starDollars)} ${starDollars} Star Dollars`;
+                    missionPreview.style.display = 'block';
+                } else {
+                    missionPreview.style.display = 'none';
+                }
+            });
         });
     </script>
 </body>

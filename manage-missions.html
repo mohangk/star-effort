@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Mission Control Center - Star Effort Chart ⭐</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🚀 MISSION CONTROL CENTER ⭐</h1>
+            <p class="subtitle">Create and manage available space missions!</p>
+            <div class="navigation-buttons">
+                <a href="index.html" class="nav-btn">
+                    📊 View Chart
+                </a>
+                <a href="add-task.html" class="nav-btn">
+                    🌟 Complete Mission
+                </a>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- Add New Mission Section -->
+            <section class="mission-form-section">
+                <div class="form-container">
+                    <h2>🛸 Create New Mission</h2>
+                    <form id="mission-form">
+                        <div class="form-group">
+                            <label for="mission-description">🚀 Mission Description:</label>
+                            <textarea id="mission-description" name="description" placeholder="Describe the mission (e.g., Clean bedroom and organize toys, Help set dinner table, Complete homework without reminders...)" required></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="mission-star-dollars">⭐ Mission Reward (1-5 Star Dollars):</label>
+                            <select id="mission-star-dollars" name="starDollars" required>
+                                <option value="">Choose mission difficulty...</option>
+                                <option value="1">⭐ 1 Star Dollar - Easy Mission</option>
+                                <option value="2">⭐⭐ 2 Star Dollars - Simple Mission</option>
+                                <option value="3">⭐⭐⭐ 3 Star Dollars - Standard Mission</option>
+                                <option value="4">⭐⭐⭐⭐ 4 Star Dollars - Challenging Mission</option>
+                                <option value="5">⭐⭐⭐⭐⭐ 5 Star Dollars - Epic Mission</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="mission-active">🌟 Mission Status:</label>
+                            <select id="mission-active" name="active">
+                                <option value="true">🚀 Active - Available for selection</option>
+                                <option value="false">⏸️ Inactive - Hidden from mission list</option>
+                            </select>
+                        </div>
+
+                        <div class="form-buttons">
+                            <button type="submit" class="btn btn-primary" id="mission-submit-btn">
+                                🚀 Launch Mission
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="cancel-edit-btn" style="display: none;">
+                                🔙 Cancel Edit
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Missions List Section -->
+            <section class="missions-list-section">
+                <div class="missions-header">
+                    <h2>🌌 Available Missions</h2>
+                    <div class="missions-stats">
+                        <span>Active: <span id="active-missions-count">0</span></span>
+                        <span>Inactive: <span id="inactive-missions-count">0</span></span>
+                    </div>
+                </div>
+                
+                <div class="missions-list">
+                    <table id="missions-table">
+                        <thead>
+                            <tr>
+                                <th>🚀 Mission Description</th>
+                                <th>⭐ Reward</th>
+                                <th>🌟 Status</th>
+                                <th>🛠️ Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Missions will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                    <div id="no-missions" class="no-tasks">
+                        🌌 No missions created yet! Ready to launch your first mission? 🛸
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>🌟 Control your space missions like a true commander! 🌟</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        // Initialize missions page
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeMissionsPage();
+        });
+    </script>
+</body>
+</html>
