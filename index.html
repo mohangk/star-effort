@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⭐ Star Effort Chart 🚀</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🚀 STAR EFFORT CHART ⭐</h1>
+            <p class="subtitle">Track your amazing efforts and earn Star Dollars!</p>
+            <a href="add-task.html" class="add-task-btn">
+                🌟 Add New Task 🌟
+            </a>
+        </header>
+
+        <main class="main-content">
+            <!-- ASHA's Task List -->
+            <section class="child-section">
+                <div class="child-header">
+                    <h2>👩‍🚀 ASHA's Space Missions</h2>
+                    <div class="star-total">
+                        Total Star Dollars: <span id="asha-total">0</span> ⭐
+                    </div>
+                </div>
+                <div class="task-list">
+                    <table id="asha-tasks">
+                        <thead>
+                            <tr>
+                                <th>🗓️ Date</th>
+                                <th>🚀 Mission Description</th>
+                                <th>⭐ Star Dollars</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Tasks will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                    <div id="asha-no-tasks" class="no-tasks">
+                        🌌 No space missions completed yet! Ready to start exploring? 🛸
+                    </div>
+                </div>
+            </section>
+
+            <!-- EKAA's Task List -->
+            <section class="child-section">
+                <div class="child-header">
+                    <h2>👨‍🚀 EKAA's Space Missions</h2>
+                    <div class="star-total">
+                        Total Star Dollars: <span id="ekaa-total">0</span> ⭐
+                    </div>
+                </div>
+                <div class="task-list">
+                    <table id="ekaa-tasks">
+                        <thead>
+                            <tr>
+                                <th>🗓️ Date</th>
+                                <th>🚀 Mission Description</th>
+                                <th>⭐ Star Dollars</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Tasks will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                    <div id="ekaa-no-tasks" class="no-tasks">
+                        🌌 No space missions completed yet! Ready to start exploring? 🛸
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>🌟 Keep up the great work, space explorers! 🌟</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

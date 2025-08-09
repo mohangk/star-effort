@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Add New Mission - Star Effort Chart ⭐</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🚀 NEW SPACE MISSION ⭐</h1>
+            <p class="subtitle">Record a completed task and earn Star Dollars!</p>
+        </header>
+
+        <main class="main-content">
+            <div class="form-container">
+                <form id="task-form">
+                    <div class="form-group">
+                        <label for="task-date">🗓️ Mission Date:</label>
+                        <input type="date" id="task-date" name="date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="child-name">👨‍🚀 Space Explorer:</label>
+                        <select id="child-name" name="childName" required>
+                            <option value="">Choose your space explorer...</option>
+                            <option value="ASHA">👩‍🚀 ASHA</option>
+                            <option value="EKAA">👨‍🚀 EKAA</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="task-description">🚀 Mission Description:</label>
+                        <textarea id="task-description" name="description" placeholder="What amazing task was completed? (e.g., Cleaned my room, Helped with dishes, Finished homework...)" required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="star-dollars">⭐ Star Dollars Earned (1-5):</label>
+                        <select id="star-dollars" name="starDollars" required>
+                            <option value="">Choose star dollars...</option>
+                            <option value="1">⭐ 1 Star Dollar</option>
+                            <option value="2">⭐⭐ 2 Star Dollars</option>
+                            <option value="3">⭐⭐⭐ 3 Star Dollars</option>
+                            <option value="4">⭐⭐⭐⭐ 4 Star Dollars</option>
+                            <option value="5">⭐⭐⭐⭐⭐ 5 Star Dollars</option>
+                        </select>
+                    </div>
+
+                    <div class="form-buttons">
+                        <button type="submit" class="btn btn-primary">
+                            🌟 Complete Mission 🌟
+                        </button>
+                        <a href="index.html" class="btn btn-secondary">
+                            🔙 Back to Chart
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>🌟 Every effort counts in our space adventure! 🌟</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        // Set today's date as default
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('task-date').value = today;
+        });
+    </script>
+</body>
+</html>
