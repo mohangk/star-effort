@@ -63,10 +63,25 @@
         </footer>
     </div>
 
+    <!-- Firebase SDKs -->
+    <script type="module" src="firebase-setup.js"></script>
     <script src="script.js"></script>
     <script>
         // Initialize add task page
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔧 DOM loaded on add-task page...');
+            
+            // Firebase should already be ready (script.js handles the firebase-ready event)
+            if (window.isFirebaseReady) {
+                console.log('✅ Firebase ready, initializing add task page...');
+                initializeAddTaskPage();
+            } else {
+                console.error('❌ Firebase not ready - script.js should have handled this');
+                alert('🔧 App initialization error. Please refresh the page.');
+            }
+        });
+        
+        function initializeAddTaskPage() {
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('task-date').value = today;
             
@@ -92,7 +107,7 @@
                     missionPreview.style.display = 'none';
                 }
             });
-        });
+        }
     </script>
 </body>
 </html>

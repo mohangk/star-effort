@@ -1,0 +1,24 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Family account access - simple but secure
+    // For now, allow access to authenticated users only
+    // Later we'll add family-specific authentication
+    
+    // Tasks collection - family members can read/write their family's tasks
+    match /tasks/{taskId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Missions collection - family members can read/write their family's missions
+    match /missions/{missionId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Default deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

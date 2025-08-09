@@ -31,7 +31,13 @@
                     </div>
                 </div>
                 <div class="task-list">
-                    <table id="asha-tasks">
+                    <!-- Loading state -->
+                    <div id="asha-loading" class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p>🚀 Loading space missions...</p>
+                    </div>
+                    
+                    <table id="asha-tasks" style="display: none;">
                         <thead>
                             <tr>
                                 <th>🗓️ Date</th>
@@ -44,7 +50,7 @@
                             <!-- Tasks will be populated by JavaScript -->
                         </tbody>
                     </table>
-                    <div id="asha-no-tasks" class="no-tasks">
+                    <div id="asha-no-tasks" class="no-tasks" style="display: none;">
                         🌌 No space missions completed yet! Ready to start exploring? 🛸
                     </div>
                 </div>
@@ -59,7 +65,13 @@
                     </div>
                 </div>
                 <div class="task-list">
-                    <table id="ekaa-tasks">
+                    <!-- Loading state -->
+                    <div id="ekaa-loading" class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p>🛸 Loading space missions...</p>
+                    </div>
+                    
+                    <table id="ekaa-tasks" style="display: none;">
                         <thead>
                             <tr>
                                 <th>🗓️ Date</th>
@@ -72,7 +84,7 @@
                             <!-- Tasks will be populated by JavaScript -->
                         </tbody>
                     </table>
-                    <div id="ekaa-no-tasks" class="no-tasks">
+                    <div id="ekaa-no-tasks" class="no-tasks" style="display: none;">
                         🌌 No space missions completed yet! Ready to start exploring? 🛸
                     </div>
                 </div>
@@ -84,6 +96,23 @@
         </footer>
     </div>
 
+    <!-- Firebase SDKs -->
+    <script type="module" src="firebase-setup.js"></script>
     <script src="script.js"></script>
+    <script>
+        // Initialize index page
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔧 DOM loaded on index page...');
+            
+            // Firebase should already be ready (script.js handles the firebase-ready event)
+            if (window.isFirebaseReady) {
+                console.log('✅ Firebase ready, loading tasks...');
+                displayAllTasks();
+            } else {
+                console.error('❌ Firebase not ready - script.js should have handled this');
+                alert('🔧 App initialization error. Please refresh the page.');
+            }
+        });
+    </script>
 </body>
 </html>

@@ -75,7 +75,13 @@
                 </div>
                 
                 <div class="missions-list">
-                    <table id="missions-table">
+                    <!-- Loading state -->
+                    <div id="missions-loading" class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p>🛰️ Loading mission database...</p>
+                    </div>
+                    
+                    <table id="missions-table" style="display: none;">
                         <thead>
                             <tr>
                                 <th>🚀 Mission Description</th>
@@ -88,7 +94,7 @@
                             <!-- Missions will be populated by JavaScript -->
                         </tbody>
                     </table>
-                    <div id="no-missions" class="no-tasks">
+                    <div id="no-missions" class="no-tasks" style="display: none;">
                         🌌 No missions created yet! Ready to launch your first mission? 🛸
                     </div>
                 </div>
@@ -100,11 +106,43 @@
         </footer>
     </div>
 
+    <!-- Firebase SDKs -->
+    <script type="module" src="firebase-setup.js"></script>
     <script src="script.js"></script>
     <script>
         // Initialize missions page
         document.addEventListener('DOMContentLoaded', function() {
-            initializeMissionsPage();
+            console.log('🔧 DOM loaded, setting up mission form...');
+            
+            // Set up form handler immediately to prevent page reload
+            const missionForm = document.getElementById('mission-form');
+            if (missionForm) {
+                console.log('✅ Found mission form, adding event listener...');
+                missionForm.addEventListener('submit', function(event) {
+                    console.log('🚀 Form submitted!');
+                    event.preventDefault(); // Always prevent default submission
+                    
+                    // Check if Firebase functions are available
+                    if (typeof handleMissionFormSubmit === 'function') {
+                        console.log('✅ Calling handleMissionFormSubmit...');
+                        handleMissionFormSubmit(event);
+                    } else {
+                        console.error('❌ handleMissionFormSubmit not available yet');
+                        alert('🔄 App functions not loaded. Please refresh the page.');
+                    }
+                });
+            } else {
+                console.error('❌ Mission form not found!');
+            }
+            
+            // Firebase should already be ready (script.js handles the firebase-ready event)
+            if (window.isFirebaseReady) {
+                console.log('✅ Firebase ready, initializing missions page...');
+                initializeMissionsPage();
+            } else {
+                console.error('❌ Firebase not ready - script.js should have handled this');
+                alert('🔧 App initialization error. Please refresh the page.');
+            }
         });
     </script>
 </body>
