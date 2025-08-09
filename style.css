@@ -168,6 +168,39 @@ body::before {
     border-bottom: none;
 }
 
+/* Actions column styling */
+.task-list th:last-child,
+.task-list td:last-child {
+    width: 120px;
+    text-align: center;
+}
+
+/* Delete/Abort Mission button styling */
+.delete-btn {
+    background: linear-gradient(45deg, #ff4757, #ff3742);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-size: 0.85em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(255, 71, 87, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.delete-btn:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(45deg, #ff3742, #ff2f3a);
+    box-shadow: 0 4px 12px rgba(255, 71, 87, 0.5);
+}
+
+.delete-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(255, 71, 87, 0.4);
+}
+
 .no-tasks {
     text-align: center;
     padding: 40px 20px;
@@ -302,6 +335,16 @@ body::before {
     .task-list th,
     .task-list td {
         padding: 8px 10px;
+    }
+    
+    .task-list th:last-child,
+    .task-list td:last-child {
+        width: 80px;
+    }
+    
+    .delete-btn {
+        padding: 4px 8px;
+        font-size: 0.75em;
     }
     
     .form-buttons {

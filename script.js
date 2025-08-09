@@ -23,6 +23,27 @@ function addTask(task) {
     saveTasks(tasks);
 }
 
+// Delete a task by ID
+function deleteTask(taskId) {
+    const tasks = getTasks();
+    const updatedTasks = tasks.filter(task => task.id !== taskId);
+    saveTasks(updatedTasks);
+    displayAllTasks(); // Refresh the display
+}
+
+// Confirm task deletion with space-themed message
+function confirmDeleteTask(taskId, taskDescription, childName) {
+    const message = `🚀 Are you sure you want to abort this space mission?\n\n` +
+                   `Mission: "${taskDescription}"\n` +
+                   `Space Explorer: ${childName}\n\n` +
+                   `⚠️ This action cannot be undone! 🌌`;
+    
+    if (confirm(message)) {
+        deleteTask(taskId);
+        alert(`🌟 Mission successfully aborted from the space log! 🌟`);
+    }
+}
+
 // Format date for display
 function formatDate(dateString) {
     const date = new Date(dateString);
@@ -80,6 +101,15 @@ function displayTasksForChild(childName, tableId, noTasksId, totalId) {
             // Star dollars cell
             const starsCell = row.insertCell(2);
             starsCell.innerHTML = `${getStarEmoji(task.starDollars)} ${task.starDollars}`;
+            
+            // Actions cell with delete button
+            const actionsCell = row.insertCell(3);
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.innerHTML = '💥 Abort';
+            deleteBtn.title = 'Abort this space mission';
+            deleteBtn.onclick = () => confirmDeleteTask(task.id, task.description, task.childName);
+            actionsCell.appendChild(deleteBtn);
         });
     }
 
