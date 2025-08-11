@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🛰️ Astral Rewards Bay - Star Effort Chart</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>🛰️ ASTRAL REWARDS BAY ⭐</h1>
+      <p class="subtitle">Create and manage Astral Rewards for your explorers</p>
+      <div class="navigation-buttons">
+        <a href="index.html" class="nav-btn">📊 View Chart</a>
+        <a href="manage-missions.html" class="nav-btn">🚀 Mission Control</a>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <!-- Add/Edit Reward -->
+      <section class="reward-form-section mission-form-section">
+        <div class="form-container">
+          <h2>🌟 Add Astral Reward</h2>
+          <form id="reward-form">
+            <div class="form-group">
+              <label for="reward-description">🎁 Reward Description:</label>
+              <textarea id="reward-description" name="description" placeholder="Describe the Astral Reward (e.g., Movie Night, Ice Cream Trip, Extra Screen Time)" required></textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="reward-cost">⭐ Star Dollar Cost:</label>
+              <input id="reward-cost" name="cost" type="number" min="1" step="1" placeholder="e.g., 8" required />
+            </div>
+
+            <div class="form-group">
+              <label for="reward-active">🌟 Reward Status:</label>
+              <select id="reward-active" name="active">
+                <option value="true">🛰️ Active - Available to claim</option>
+                <option value="false">🪐 Inactive - Hidden from Open Cargo Bay</option>
+              </select>
+            </div>
+
+            <div class="form-buttons">
+              <button type="submit" class="btn btn-primary" id="reward-submit-btn">🌟 Add Astral Reward</button>
+              <button type="button" class="btn btn-secondary" id="reward-cancel-edit-btn" style="display:none;">🔙 Cancel Edit</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Rewards List -->
+      <section class="missions-list-section">
+        <div class="missions-header">
+          <h2>🪐 Astral Rewards</h2>
+        </div>
+        <div class="missions-list">
+          <div id="rewards-loading" class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>🌌 Loading Astral Rewards...</p>
+          </div>
+
+          <table id="rewards-table" style="display:none;">
+            <thead>
+              <tr>
+                <th>🎁 Description</th>
+                <th>⭐ Cost</th>
+                <th>🌟 Status</th>
+                <th>🛠️ Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+
+          <div id="no-rewards" class="no-tasks" style="display:none;">
+            🌌 No Astral Rewards yet! Add some above to fill the cargo bay.
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>✨ Fill the cargo bay with Astral Rewards for your crew ✨</p>
+    </footer>
+  </div>
+
+  <script type="module" src="firebase-setup.js"></script>
+  <script src="script.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const rewardForm = document.getElementById('reward-form');
+      if (rewardForm) {
+        rewardForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          if (typeof handleRewardFormSubmit === 'function') {
+            handleRewardFormSubmit(e);
+          } else {
+            alert('🔧 App not ready. Please refresh.');
+          }
+        });
+      }
+
+      if (window.isFirebaseReady) {
+        initializeRewardsPage();
+      } else {
+        alert('🔧 App initialization error. Please refresh.');
+      }
+    });
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🧰 Open Cargo Bay - Astral Rewards</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .redeem-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+    .balance-badge { background: #fbbf24; color:#1f2937; padding:8px 14px; border-radius:14px; font-weight:700; box-shadow:0 4px 16px rgba(0,0,0,.25); }
+    .rewards-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap:16px; }
+    .reward-card { background: rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.25); padding:16px; backdrop-filter: blur(10px); }
+    .reward-title { font-weight:800; font-size:1.1rem; margin-bottom:8px; }
+    .reward-cost { opacity:.9; margin-bottom:12px; }
+    .reward-disabled { opacity:.5; filter: grayscale(0.3); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="redeem-header">
+        <h1>🧰 OPEN CARGO BAY ⭐</h1>
+        <div class="balance-badge">Combined Star Dollars: <span id="combined-balance">0</span> ⭐</div>
+      </div>
+      <div class="navigation-buttons">
+        <a href="index.html" class="nav-btn">📊 View Chart</a>
+        <a href="manage-rewards.html" class="nav-btn">🛰️ Astral Rewards Bay</a>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <section class="missions-header" style="margin-bottom:16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+        <div>
+          <label for="redeem-requester"><strong>Requester:</strong></label>
+          <select id="redeem-requester">
+            <option value="FAMILY">👨‍👩‍👧‍👧 FAMILY</option>
+            <option value="ASHA">👩‍🚀 ASHA</option>
+            <option value="EKAA">👨‍🚀 EKAA</option>
+          </select>
+        </div>
+        <div style="flex:1; min-width:240px;">
+          <label for="redeem-note"><strong>Note (optional):</strong></label>
+          <input id="redeem-note" type="text" placeholder="e.g., Friday movie night" style="width:100%; padding:8px; border-radius:10px; border:1px solid rgba(255,255,255,.3); background: rgba(255,255,255,.08); color:#fff;" />
+        </div>
+      </section>
+      <div id="redeem-loading" class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>🛰️ Scanning cargo manifests...</p>
+      </div>
+      <div id="redeem-rewards" class="rewards-grid"></div>
+
+      <section class="missions-list-section" style="margin-top:24px;">
+        <div class="missions-header">
+          <h2>📜 Cargo Manifest: Claimed Astral Rewards</h2>
+        </div>
+        <div class="missions-list">
+          <div id="redemptions-loading" class="loading-state" style="display:none;">
+            <div class="loading-spinner"></div>
+            <p>🔎 Fetching redemption history...</p>
+          </div>
+          <table id="redemptions-table" style="display:none;">
+            <thead>
+              <tr>
+                <th>🗓️ Date</th>
+                <th>🎁 Astral Reward</th>
+                <th>⭐ Cost</th>
+                <th>📝 Note</th>
+                <th>🛠️ Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div id="no-redemptions" class="no-tasks" style="display:none;">
+            ✨ No Astral Rewards claimed yet.
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>✨ Trade Star Dollars for Astral Rewards ✨</p>
+    </footer>
+  </div>
+
+  <script type="module" src="firebase-setup.js"></script>
+  <script src="script.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      if (window.isFirebaseReady) {
+        initializeRedeemPage();
+      } else {
+        alert('🔧 App initialization error. Please refresh.');
+      }
+    });
+  </script>
+</body>
+</html>
+

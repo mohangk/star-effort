@@ -4,6 +4,8 @@
 // Collections
 const TASKS_COLLECTION = 'tasks';
 const MISSIONS_COLLECTION = 'missions';
+const REWARDS_COLLECTION = 'rewards';
+const REDEMPTIONS_COLLECTION = 'redemptions';
 
 // Wait for Firebase to be initialized
 let isFirebaseReady = false;
@@ -158,7 +160,7 @@ async function deleteTask(taskId) {
         await deleteDoc(doc(db, TASKS_COLLECTION, taskId));
         console.log('Task deleted:', taskId);
         
-        displayAllTasks(); // Refresh the display
+    displayAllTasks(); // Refresh the display
     } catch (error) {
         console.error('Error deleting task:', error);
         alert('❌ Error deleting mission. Please try again.');
@@ -211,6 +213,119 @@ async function getMissions() {
         // Return empty array so the app can continue
         return [];
     }
+}
+
+// ============= FIREBASE REWARD FUNCTIONS =============
+
+// Get rewards from Firestore
+async function getRewards() {
+    try {
+        const { collection, getDocs, query, orderBy } = window.firestoreFunctions;
+        const db = window.db;
+        const rewardsQuery = query(collection(db, REWARDS_COLLECTION), orderBy('timestamp', 'desc'));
+        const querySnapshot = await getDocs(rewardsQuery);
+        const rewards = [];
+        querySnapshot.forEach((doc) => rewards.push({ id: doc.id, ...doc.data() }));
+        return rewards;
+    } catch (error) {
+        console.error('Error getting rewards:', error);
+        return [];
+    }
+}
+
+// ============= FIREBASE REDEMPTION/BALANCE FUNCTIONS =============
+
+// Get redemptions
+async function getRedemptions() {
+    try {
+        const { collection, getDocs, query, orderBy } = window.firestoreFunctions;
+        const db = window.db;
+        const q = query(collection(db, REDEMPTIONS_COLLECTION), orderBy('timestamp', 'desc'));
+        const snap = await getDocs(q);
+        const list = [];
+        snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() }));
+        return list;
+    } catch (e) {
+        console.error('Error getting redemptions:', e);
+        return [];
+    }
+}
+
+// Add a redemption (does not enforce balance in rules; enforced in UI)
+async function addRedemption(redemption) {
+    const { collection, addDoc } = window.firestoreFunctions;
+    const db = window.db;
+    redemption.timestamp = new Date().toISOString();
+    redemption.createdAt = new Date();
+    const docRef = await addDoc(collection(db, REDEMPTIONS_COLLECTION), redemption);
+    return { id: docRef.id, ...redemption };
+}
+
+async function getTotalEarnedFromTasks() {
+    const tasks = await getTasks();
+    return tasks.reduce((sum, t) => sum + parseInt(t.starDollars || 0, 10), 0);
+}
+
+async function getTotalSpentFromRedemptions() {
+    const redemptions = await getRedemptions();
+    return redemptions.reduce((sum, r) => sum + parseInt(r.costAtRedemption || 0, 10), 0);
+}
+
+async function getCombinedBalance() {
+    const [earned, spent] = await Promise.all([
+        getTotalEarnedFromTasks(),
+        getTotalSpentFromRedemptions()
+    ]);
+    return Math.max(0, earned - spent);
+}
+
+// Add a new reward
+async function addReward(reward) {
+    try {
+        const { collection, addDoc } = window.firestoreFunctions;
+        const db = window.db;
+        reward.timestamp = new Date().toISOString();
+        reward.createdAt = new Date();
+        reward.active = reward.active !== undefined ? reward.active : true;
+        const docRef = await addDoc(collection(db, REWARDS_COLLECTION), reward);
+        return { id: docRef.id, ...reward };
+    } catch (error) {
+        console.error('Error adding reward:', error);
+        throw error;
+    }
+}
+
+// Update an existing reward
+async function updateReward(rewardId, updatedReward) {
+    try {
+        const { doc, updateDoc } = window.firestoreFunctions;
+        const db = window.db;
+        updatedReward.updatedAt = new Date();
+        await updateDoc(doc(db, REWARDS_COLLECTION, rewardId), updatedReward);
+        return { id: rewardId, ...updatedReward };
+    } catch (error) {
+        console.error('Error updating reward:', error);
+        throw error;
+    }
+}
+
+// Delete a reward
+async function deleteReward(rewardId) {
+    try {
+        const { doc, deleteDoc } = window.firestoreFunctions;
+        const db = window.db;
+        await deleteDoc(doc(db, REWARDS_COLLECTION, rewardId));
+        return true;
+    } catch (error) {
+        console.error('Error deleting reward:', error);
+        throw error;
+    }
+}
+
+// Get active rewards only
+async function getActiveRewards() {
+    const rewards = await getRewards();
+    return rewards.filter(r => r.active !== false);
 }
 
 // Add a new mission to Firestore
@@ -278,7 +393,7 @@ async function deleteMission(missionId) {
         
         // Note: We'll handle task updates differently in Firebase
         // Tasks will reference mission IDs, but we won't automatically convert them
-        return true;
+    return true;
     } catch (error) {
         console.error('Error deleting mission:', error);
         throw error;
@@ -318,9 +433,13 @@ function formatDate(dateString) {
     return date.toLocaleDateString('en-US', options);
 }
 
-// Get star emoji representation
-function getStarEmoji(amount) {
-    return '⭐'.repeat(parseInt(amount));
+// (removed getStarEmoji)
+
+// Format star dollars with label, handling large values compactly
+function formatStarDollars(amount) {
+    const n = parseInt(amount, 10) || 0;
+    if (n <= 5) return `${'⭐'.repeat(n)} ${n} Star Dollars`;
+    return `⭐ × ${n} Star Dollars`;
 }
 
 // Display tasks for a specific child (Firebase version)
@@ -333,63 +452,63 @@ async function displayTasksForChild(childName, tableId, noTasksId, totalId) {
         if (loadingDiv) loadingDiv.style.display = 'block';
         
         const tasks = await getTasks();
-        const childTasks = tasks
-            .filter(task => task.childName === childName)
-            .sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort by date, newest first
+    const childTasks = tasks
+        .filter(task => task.childName === childName)
+        .sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort by date, newest first
 
-        const tableBody = document.querySelector(`#${tableId} tbody`);
-        const noTasksDiv = document.getElementById(noTasksId);
-        const totalSpan = document.getElementById(totalId);
+    const tableBody = document.querySelector(`#${tableId} tbody`);
+    const noTasksDiv = document.getElementById(noTasksId);
+    const totalSpan = document.getElementById(totalId);
 
-        if (!tableBody) return; // Exit if not on main page
+    if (!tableBody) return; // Exit if not on main page
 
         // Hide loading state
         if (loadingDiv) loadingDiv.style.display = 'none';
 
-        // Clear existing rows
-        tableBody.innerHTML = '';
+    // Clear existing rows
+    tableBody.innerHTML = '';
 
-        if (childTasks.length === 0) {
-            // Show no tasks message
-            noTasksDiv.style.display = 'block';
-            document.getElementById(tableId).style.display = 'none';
-        } else {
-            // Hide no tasks message and show table
-            noTasksDiv.style.display = 'none';
-            document.getElementById(tableId).style.display = 'table';
+    if (childTasks.length === 0) {
+        // Show no tasks message
+        noTasksDiv.style.display = 'block';
+        document.getElementById(tableId).style.display = 'none';
+    } else {
+        // Hide no tasks message and show table
+        noTasksDiv.style.display = 'none';
+        document.getElementById(tableId).style.display = 'table';
 
-            // Add tasks to table
-            childTasks.forEach(task => {
-                const row = tableBody.insertRow();
-                
-                // Date cell
-                const dateCell = row.insertCell(0);
-                dateCell.textContent = formatDate(task.date);
-                
-                // Description cell
-                const descCell = row.insertCell(1);
-                descCell.textContent = task.missionDescription || task.description;
-                
-                // Star dollars cell
-                const starsCell = row.insertCell(2);
-                starsCell.innerHTML = `${getStarEmoji(task.starDollars)} ${task.starDollars}`;
-                
-                // Actions cell with delete button
-                const actionsCell = row.insertCell(3);
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'delete-btn';
-                deleteBtn.innerHTML = '💥 Abort';
-                deleteBtn.title = 'Abort this space mission';
-                deleteBtn.onclick = () => confirmDeleteTask(task.id, task.missionDescription || task.description, task.childName);
-                actionsCell.appendChild(deleteBtn);
-            });
-        }
+        // Add tasks to table
+        childTasks.forEach(task => {
+            const row = tableBody.insertRow();
+            
+            // Date cell
+            const dateCell = row.insertCell(0);
+            dateCell.textContent = formatDate(task.date);
+            
+            // Description cell
+            const descCell = row.insertCell(1);
+            descCell.textContent = task.missionDescription || task.description;
+            
+            // Star dollars cell
+            const starsCell = row.insertCell(2);
+            starsCell.innerHTML = `${formatStarDollars(task.starDollars)}`;
+            
+            // Actions cell with delete button
+            const actionsCell = row.insertCell(3);
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.innerHTML = '💥 Abort';
+            deleteBtn.title = 'Abort this space mission';
+            deleteBtn.onclick = () => confirmDeleteTask(task.id, task.missionDescription || task.description, task.childName);
+            actionsCell.appendChild(deleteBtn);
+        });
+    }
 
-        // Calculate and display total star dollars
-        const total = childTasks.reduce((sum, task) => sum + parseInt(task.starDollars), 0);
-        if (totalSpan) {
-            totalSpan.textContent = total;
-        }
+    // Calculate and display total star dollars
+    const total = childTasks.reduce((sum, task) => sum + parseInt(task.starDollars), 0);
+    if (totalSpan) {
+        totalSpan.textContent = total;
+    }
     } catch (error) {
         console.error('Error displaying tasks for', childName, ':', error);
         
@@ -412,10 +531,13 @@ async function displayTasksForChild(childName, tableId, noTasksId, totalId) {
 // Display all tasks on main page (Firebase version)
 async function displayAllTasks() {
     if (document.getElementById('asha-tasks')) {
-        await Promise.all([
+        const [_, __, balance] = await Promise.all([
             displayTasksForChild('ASHA', 'asha-tasks', 'asha-no-tasks', 'asha-total'),
-            displayTasksForChild('EKAA', 'ekaa-tasks', 'ekaa-no-tasks', 'ekaa-total')
+            displayTasksForChild('EKAA', 'ekaa-tasks', 'ekaa-no-tasks', 'ekaa-total'),
+            getCombinedBalance()
         ]);
+        const headerBalance = document.getElementById('combined-balance-header');
+        if (headerBalance) headerBalance.textContent = balance;
     }
 }
 
@@ -429,76 +551,76 @@ async function handleFormSubmit(event) {
     const missionId = formData.get('missionId');
     
     try {
-        // If using mission system
-        if (missionId) {
+    // If using mission system
+    if (missionId) {
             const missions = await getMissions();
-            const selectedMission = missions.find(m => m.id == missionId);
-            
-            if (!selectedMission) {
-                alert('🚀 Selected mission not found! Please try again. 🚀');
-                return;
-            }
-            
-            const task = {
-                date: formData.get('date'),
-                childName: formData.get('childName'),
-                missionId: selectedMission.id,
-                missionDescription: selectedMission.description,
-                starDollars: selectedMission.starDollars
-            };
-
-            // Basic validation
-            if (!task.date || !task.childName) {
-                alert('🚀 Please fill in all mission details before launching! 🚀');
-                return;
-            }
-
-            // Add task
-            await addTask(task);
-            
-            // Show success message
-            alert(`🌟 Amazing! ${task.childName} completed "${selectedMission.description}" and earned ${getStarEmoji(selectedMission.starDollars)} ${selectedMission.starDollars} Star Dollars! 🌟`);
-        } else {
-            // Legacy mode - for backward compatibility
-            const task = {
-                date: formData.get('date'),
-                childName: formData.get('childName'),
-                description: formData.get('description'),
-                starDollars: formData.get('starDollars')
-            };
-
-            // Basic validation
-            if (!task.date || !task.childName || !task.description || !task.starDollars) {
-                alert('🚀 Please fill in all mission details before launching! 🚀');
-                return;
-            }
-
-            // Add task
-            await addTask(task);
-            
-            // Show success message
-            alert(`🌟 Amazing! ${task.childName} completed "${task.description}" and earned ${getStarEmoji(task.starDollars)} ${task.starDollars} Star Dollars! 🌟`);
+        const selectedMission = missions.find(m => m.id == missionId);
+        
+        if (!selectedMission) {
+            alert('🚀 Selected mission not found! Please try again. 🚀');
+            return;
         }
         
-        // Reset form
-        form.reset();
+        const task = {
+            date: formData.get('date'),
+            childName: formData.get('childName'),
+            missionId: selectedMission.id,
+            missionDescription: selectedMission.description,
+            starDollars: selectedMission.starDollars
+        };
+
+        // Basic validation
+        if (!task.date || !task.childName) {
+            alert('🚀 Please fill in all mission details before launching! 🚀');
+            return;
+        }
+
+        // Add task
+            await addTask(task);
         
-        // Set today's date again
-        const today = new Date().toISOString().split('T')[0];
-        const taskDate = document.getElementById('task-date');
-        if (taskDate) taskDate.value = today;
+        // Show success message
+        alert(`🌟 Amazing! ${task.childName} completed "${selectedMission.description}" and earned ${formatStarDollars(selectedMission.starDollars)}! 🌟`);
+    } else {
+        // Legacy mode - for backward compatibility
+        const task = {
+            date: formData.get('date'),
+            childName: formData.get('childName'),
+            description: formData.get('description'),
+            starDollars: formData.get('starDollars')
+        };
+
+        // Basic validation
+        if (!task.date || !task.childName || !task.description || !task.starDollars) {
+            alert('🚀 Please fill in all mission details before launching! 🚀');
+            return;
+        }
+
+        // Add task
+            await addTask(task);
         
-        // Hide mission preview
-        const missionPreview = document.getElementById('mission-preview');
-        if (missionPreview) missionPreview.style.display = 'none';
-        
-        // Reload missions dropdown
+        // Show success message
+        alert(`🌟 Amazing! ${task.childName} completed "${task.description}" and earned ${formatStarDollars(task.starDollars)}! 🌟`);
+    }
+    
+    // Reset form
+    form.reset();
+    
+    // Set today's date again
+    const today = new Date().toISOString().split('T')[0];
+    const taskDate = document.getElementById('task-date');
+    if (taskDate) taskDate.value = today;
+    
+    // Hide mission preview
+    const missionPreview = document.getElementById('mission-preview');
+    if (missionPreview) missionPreview.style.display = 'none';
+    
+    // Reload missions dropdown
         await loadMissionsDropdown();
-        
-        // Redirect to main page after short delay
-        setTimeout(() => {
-            window.location.href = 'index.html';
-        }, 1500);
+    
+    // Redirect to main page after short delay
+    setTimeout(() => {
+        window.location.href = 'index.html';
+    }, 1500);
         
     } catch (error) {
         console.error('Error submitting task:', error);
@@ -513,8 +635,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (taskForm) {
         taskForm.addEventListener('submit', handleFormSubmit);
     }
-    
-    // Add some fun animations and interactions
+
+// Add some fun animations and interactions
     // Add click animation to buttons
     const buttons = document.querySelectorAll('.btn, .add-task-btn');
     buttons.forEach(button => {
@@ -570,18 +692,18 @@ async function displayMissions() {
         if (loadingDiv) loadingDiv.style.display = 'none';
         
         const sortedMissions = missions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        const tableBody = missionsTable.querySelector('tbody');
-        
-        // Clear existing rows
-        tableBody.innerHTML = '';
-        
+    const tableBody = missionsTable.querySelector('tbody');
+    
+    // Clear existing rows
+    tableBody.innerHTML = '';
+    
         if (sortedMissions.length === 0) {
-            noMissionsDiv.style.display = 'block';
-            missionsTable.style.display = 'none';
-        } else {
-            noMissionsDiv.style.display = 'none';
-            missionsTable.style.display = 'table';
-            
+        noMissionsDiv.style.display = 'block';
+        missionsTable.style.display = 'none';
+    } else {
+        noMissionsDiv.style.display = 'none';
+        missionsTable.style.display = 'table';
+        
             sortedMissions.forEach(mission => {
             const row = tableBody.insertRow();
             
@@ -591,7 +713,7 @@ async function displayMissions() {
             
             // Star dollars cell
             const starsCell = row.insertCell(1);
-            starsCell.innerHTML = `${getStarEmoji(mission.starDollars)} ${mission.starDollars}`;
+            starsCell.innerHTML = `${formatStarDollars(mission.starDollars)}`;
             
             // Status cell
             const statusCell = row.insertCell(2);
@@ -629,12 +751,12 @@ async function displayMissions() {
         });
     }
     
-        // Update counts
+    // Update counts
         const activeMissions = sortedMissions.filter(m => m.active !== false);
         const inactiveMissions = sortedMissions.filter(m => m.active === false);
-        
-        if (activeCountSpan) activeCountSpan.textContent = activeMissions.length;
-        if (inactiveCountSpan) inactiveCountSpan.textContent = inactiveMissions.length;
+    
+    if (activeCountSpan) activeCountSpan.textContent = activeMissions.length;
+    if (inactiveCountSpan) inactiveCountSpan.textContent = inactiveMissions.length;
     } catch (error) {
         console.error('Error displaying missions:', error);
         
@@ -651,6 +773,308 @@ async function displayMissions() {
     }
 }
 
+// ============= REWARD DISPLAY AND MANAGEMENT UI =============
+
+// Display rewards in the Astral Rewards Bay
+async function displayRewards() {
+    const rewardsTable = document.getElementById('rewards-table');
+    const noRewardsDiv = document.getElementById('no-rewards');
+    const loadingDiv = document.getElementById('rewards-loading');
+    if (!rewardsTable) return;
+
+    try {
+        if (loadingDiv) loadingDiv.style.display = 'block';
+        const rewards = await getRewards();
+        if (loadingDiv) loadingDiv.style.display = 'none';
+
+        const sorted = rewards.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        const tbody = rewardsTable.querySelector('tbody');
+        tbody.innerHTML = '';
+
+        if (sorted.length === 0) {
+            noRewardsDiv.style.display = 'block';
+            rewardsTable.style.display = 'none';
+        } else {
+            noRewardsDiv.style.display = 'none';
+            rewardsTable.style.display = 'table';
+            sorted.forEach(reward => {
+                const row = tbody.insertRow();
+                row.insertCell(0).textContent = reward.description;
+                row.insertCell(1).innerHTML = `${formatStarDollars(reward.cost)}`;
+                const statusCell = row.insertCell(2);
+                const statusSpan = document.createElement('span');
+                statusSpan.className = reward.active !== false ? 'status-active' : 'status-inactive';
+                statusSpan.textContent = reward.active !== false ? '🛰️ Active' : '🪐 Inactive';
+                statusCell.appendChild(statusSpan);
+
+                const actions = row.insertCell(3);
+                const editBtn = document.createElement('button');
+                editBtn.className = 'btn-small btn-edit';
+                editBtn.innerHTML = '✏️ Edit';
+                editBtn.onclick = () => editReward(reward.id);
+
+                const toggleBtn = document.createElement('button');
+                toggleBtn.className = 'btn-small btn-toggle';
+                toggleBtn.innerHTML = reward.active !== false ? '⏸️' : '🚀';
+                toggleBtn.title = reward.active !== false ? 'Deactivate' : 'Activate';
+                toggleBtn.onclick = () => toggleRewardStatus(reward.id);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn-small btn-delete';
+                deleteBtn.innerHTML = '🗑️';
+                deleteBtn.title = 'Delete reward';
+                deleteBtn.onclick = () => confirmDeleteReward(reward.id, reward.description);
+
+                actions.appendChild(editBtn);
+                actions.appendChild(toggleBtn);
+                actions.appendChild(deleteBtn);
+            });
+        }
+    } catch (error) {
+        console.error('Error displaying rewards:', error);
+        if (loadingDiv) loadingDiv.style.display = 'none';
+        if (noRewardsDiv) {
+            noRewardsDiv.innerHTML = '❌ Error loading Astral Rewards. Please refresh the page.';
+            noRewardsDiv.style.display = 'block';
+        }
+        if (rewardsTable) rewardsTable.style.display = 'none';
+    }
+}
+
+function confirmDeleteReward(rewardId, rewardDescription) {
+    const message = `🛸 Delete this Astral Reward?\n\nReward: "${rewardDescription}"\n\nThis cannot be undone.`;
+    if (confirm(message)) {
+        deleteReward(rewardId);
+        displayRewards();
+        alert('🗑️ Astral Reward removed.');
+    }
+}
+
+async function editReward(rewardId) {
+    const rewards = await getRewards();
+    const reward = rewards.find(r => r.id === rewardId);
+    if (!reward) return;
+
+    document.getElementById('reward-description').value = reward.description;
+    document.getElementById('reward-cost').value = reward.cost;
+    document.getElementById('reward-active').value = reward.active !== false ? 'true' : 'false';
+
+    const submitBtn = document.getElementById('reward-submit-btn');
+    const cancelBtn = document.getElementById('reward-cancel-edit-btn');
+    submitBtn.textContent = '💫 Update Astral Reward';
+    submitBtn.dataset.editingId = rewardId;
+    cancelBtn.style.display = 'inline-block';
+
+    document.querySelector('.reward-form-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelRewardEdit() {
+    document.getElementById('reward-form').reset();
+    const submitBtn = document.getElementById('reward-submit-btn');
+    const cancelBtn = document.getElementById('reward-cancel-edit-btn');
+    submitBtn.textContent = '🌟 Add Astral Reward';
+    delete submitBtn.dataset.editingId;
+    cancelBtn.style.display = 'none';
+}
+
+async function toggleRewardStatus(rewardId) {
+    try {
+        const rewards = await getRewards();
+        const reward = rewards.find(r => r.id === rewardId);
+        if (!reward) return;
+        const newStatus = reward.active !== false ? false : true;
+        await updateReward(rewardId, { active: newStatus });
+        await displayRewards();
+    } catch (e) {
+        console.error('Error toggling reward status:', e);
+        alert('❌ Failed to toggle reward status.');
+    }
+}
+
+async function handleRewardFormSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const submitBtn = document.getElementById('reward-submit-btn');
+    const rewardData = {
+        description: formData.get('description'),
+        cost: parseInt(formData.get('cost')),
+        active: formData.get('active') === 'true'
+    };
+    if (!rewardData.description || !rewardData.cost) {
+        alert('🛰️ Please fill in all Astral Reward details.');
+        return;
+    }
+    submitBtn.disabled = true;
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = '🚀 Saving...';
+    try {
+        if (submitBtn.dataset.editingId) {
+            await updateReward(submitBtn.dataset.editingId, rewardData);
+            alert('💫 Astral Reward updated!');
+            cancelRewardEdit();
+        } else {
+            await addReward(rewardData);
+            alert('🌟 Astral Reward added!');
+            form.reset();
+            document.getElementById('reward-active').value = 'true';
+        }
+        await displayRewards();
+    } catch (e) {
+        console.error('Error saving reward:', e);
+        alert('❌ Could not save Astral Reward.');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    }
+}
+
+async function initializeRewardsPage() {
+    try {
+        await displayRewards();
+        const cancelBtn = document.getElementById('reward-cancel-edit-btn');
+        if (cancelBtn) cancelBtn.addEventListener('click', cancelRewardEdit);
+        const activeSelect = document.getElementById('reward-active');
+        if (activeSelect) activeSelect.value = 'true';
+    } catch (e) {
+        console.error('Error initializing rewards page:', e);
+    }
+}
+
+// ============= OPEN CARGO BAY (REDEEM UI) =============
+
+async function displayRedeemableRewards() {
+    const balanceSpan = document.getElementById('combined-balance');
+    const rewardsContainer = document.getElementById('redeem-rewards');
+    const loading = document.getElementById('redeem-loading');
+    if (!rewardsContainer) return;
+
+    try {
+        if (loading) loading.style.display = 'block';
+        const [balance, rewards] = await Promise.all([
+            getCombinedBalance(),
+            getActiveRewards()
+        ]);
+        if (balanceSpan) balanceSpan.textContent = balance;
+        if (loading) loading.style.display = 'none';
+
+        rewardsContainer.innerHTML = '';
+        rewards.sort((a,b) => a.cost - b.cost).forEach(reward => {
+            const card = document.createElement('div');
+            card.className = 'reward-card';
+            const affordable = balance >= reward.cost;
+            card.innerHTML = `
+                <div class="reward-card-inner ${affordable ? '' : 'reward-disabled'}">
+                  <div class="reward-title">${reward.description}</div>
+                  <div class="reward-cost">${formatStarDollars(reward.cost)}</div>
+                  <button class="btn btn-primary reward-redeem-btn" ${affordable ? '' : 'disabled'}>🧰 Open Cargo Bay</button>
+                </div>`;
+            const btn = card.querySelector('.reward-redeem-btn');
+            btn.addEventListener('click', () => redeemReward(reward));
+            rewardsContainer.appendChild(card);
+        });
+    } catch (e) {
+        console.error('Error displaying redeemable rewards:', e);
+        if (loading) loading.style.display = 'none';
+        rewardsContainer.innerHTML = '❌ Error loading rewards.';
+    }
+}
+
+async function redeemReward(reward) {
+    try {
+        const balance = await getCombinedBalance();
+        if (balance < reward.cost) {
+            alert('⚠️ Not enough Star Dollars to open this cargo.');
+            return;
+        }
+        const requester = (document.getElementById('redeem-requester')?.value) || 'FAMILY';
+        const note = (document.getElementById('redeem-note')?.value || '').trim();
+        const ok = confirm(`Open Cargo Bay for "${reward.description}"\nCost: ${reward.cost} Star Dollars\nRequested by: ${requester}${note ? `\nNote: ${note}` : ''}`);
+        if (!ok) return;
+        await addRedemption({
+            rewardId: reward.id,
+            rewardDescriptionSnapshot: reward.description,
+            costAtRedemption: reward.cost,
+            requestedBy: requester,
+            note
+        });
+        alert('🎉 Cargo opened! Enjoy your Astral Reward.');
+        await displayRedeemableRewards();
+        await displayRedemptionsHistory();
+    } catch (e) {
+        console.error('Error redeeming reward:', e);
+        alert('❌ Could not open cargo bay.');
+    }
+}
+
+async function displayRedemptionsHistory() {
+    const table = document.getElementById('redemptions-table');
+    const tbody = table ? table.querySelector('tbody') : null;
+    const loading = document.getElementById('redemptions-loading');
+    const empty = document.getElementById('no-redemptions');
+    if (!table || !tbody) return;
+
+    try {
+        if (loading) loading.style.display = 'block';
+        const list = await getRedemptions();
+        if (loading) loading.style.display = 'none';
+
+        tbody.innerHTML = '';
+        if (!list.length) {
+            table.style.display = 'none';
+            if (empty) empty.style.display = 'block';
+            return;
+        }
+        if (empty) empty.style.display = 'none';
+        table.style.display = 'table';
+
+        list.forEach(r => {
+            const row = tbody.insertRow();
+            row.insertCell(0).textContent = formatDate(r.timestamp || r.createdAt);
+            row.insertCell(1).textContent = r.rewardDescriptionSnapshot || '(deleted reward)';
+            row.insertCell(2).innerHTML = `${formatStarDollars(r.costAtRedemption)}`;
+            row.insertCell(3).textContent = r.note || '';
+            const actions = row.insertCell(4);
+            const del = document.createElement('button');
+            del.className = 'btn-small btn-delete';
+            del.innerHTML = '🗑️';
+            del.title = 'Delete redemption';
+            del.onclick = () => confirmDeleteRedemption(r.id);
+            actions.appendChild(del);
+        });
+    } catch (e) {
+        console.error('Error displaying redemption history:', e);
+        if (loading) loading.style.display = 'none';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="4">❌ Error loading history.</td></tr>';
+        table.style.display = 'table';
+    }
+}
+
+function confirmDeleteRedemption(redemptionId) {
+    if (!confirm('🗑️ Remove this redemption from the cargo manifest?')) return;
+    deleteRedemption(redemptionId)
+        .then(async () => {
+            await Promise.all([
+                displayRedeemableRewards(),
+                displayRedemptionsHistory()
+            ]);
+        })
+        .catch(() => alert('❌ Failed to delete redemption.'));
+}
+
+async function deleteRedemption(redemptionId) {
+    const { doc, deleteDoc } = window.firestoreFunctions;
+    const db = window.db;
+    await deleteDoc(doc(db, REDEMPTIONS_COLLECTION, redemptionId));
+}
+
+async function initializeRedeemPage() {
+    await Promise.all([
+        displayRedeemableRewards(),
+        displayRedemptionsHistory()
+    ]);
+}
+
 // Load missions into dropdown for task form (Firebase version)
 async function loadMissionsDropdown() {
     const missionSelect = document.getElementById('mission-select');
@@ -658,18 +1082,18 @@ async function loadMissionsDropdown() {
     
     try {
         const activeMissions = (await getActiveMissions()).sort((a, b) => a.description.localeCompare(b.description));
-        
-        // Clear existing options except the first one
-        missionSelect.innerHTML = '<option value="">Choose your mission...</option>';
-        
-        activeMissions.forEach(mission => {
-            const option = document.createElement('option');
-            option.value = mission.id;
-            option.textContent = `${mission.description} (${getStarEmoji(mission.starDollars)} ${mission.starDollars})`;
-            option.dataset.starDollars = mission.starDollars;
-            option.dataset.description = mission.description;
-            missionSelect.appendChild(option);
-        });
+    
+    // Clear existing options except the first one
+    missionSelect.innerHTML = '<option value="">Choose your mission...</option>';
+    
+    activeMissions.forEach(mission => {
+        const option = document.createElement('option');
+        option.value = mission.id;
+        option.textContent = `${mission.description} (${formatStarDollars(mission.starDollars)})`;
+        option.dataset.starDollars = mission.starDollars;
+        option.dataset.description = mission.description;
+        missionSelect.appendChild(option);
+    });
         
         if (activeMissions.length === 0) {
             const option = document.createElement('option');
@@ -722,18 +1146,18 @@ function cancelEdit() {
 async function toggleMissionStatus(missionId) {
     try {
         const missions = await getMissions();
-        const mission = missions.find(m => m.id === missionId);
+    const mission = missions.find(m => m.id === missionId);
         if (!mission) {
             alert('❌ Mission not found!');
             return;
         }
-        
-        const newStatus = mission.active !== false ? false : true;
+    
+    const newStatus = mission.active !== false ? false : true;
         await updateMission(missionId, { active: newStatus });
         await displayMissions();
-        
-        const statusText = newStatus ? 'activated' : 'deactivated';
-        alert(`🌟 Mission ${statusText} successfully! 🌟`);
+    
+    const statusText = newStatus ? 'activated' : 'deactivated';
+    alert(`🌟 Mission ${statusText} successfully! 🌟`);
     } catch (error) {
         console.error('Error toggling mission status:', error);
         alert('❌ Failed to toggle mission status. Please try again.');
@@ -766,20 +1190,20 @@ async function handleMissionFormSubmit(event) {
     submitBtn.textContent = '🚀 Launching...';
     
     try {
-        if (submitBtn.dataset.editingId) {
-            // Update existing mission
+    if (submitBtn.dataset.editingId) {
+        // Update existing mission
             const missionId = submitBtn.dataset.editingId;
             await updateMission(missionId, missionData);
-            alert('💫 Mission updated successfully! 💫');
-            cancelEdit();
-        } else {
-            // Add new mission
+        alert('💫 Mission updated successfully! 💫');
+        cancelEdit();
+    } else {
+        // Add new mission
             await addMission(missionData);
-            alert('🚀 New mission launched successfully! 🚀');
-            form.reset();
-            document.getElementById('mission-active').value = 'true'; // Reset to active
-        }
-        
+        alert('🚀 New mission launched successfully! 🚀');
+        form.reset();
+        document.getElementById('mission-active').value = 'true'; // Reset to active
+    }
+    
         // Refresh the missions display
         await displayMissions();
         
@@ -810,23 +1234,23 @@ async function handleMissionFormSubmit(event) {
 async function initializeMissionsPage() {
     try {
         console.log('🔧 Initializing missions page...');
-        
-        // Display missions
+    
+    // Display missions
         console.log('📊 Loading missions...');
         await displayMissions();
         console.log('✅ Missions loaded');
-        
-        // Set up cancel edit button
-        const cancelBtn = document.getElementById('cancel-edit-btn');
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', cancelEdit);
+    
+    // Set up cancel edit button
+    const cancelBtn = document.getElementById('cancel-edit-btn');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', cancelEdit);
             console.log('✅ Cancel edit button set up');
-        }
-        
-        // Set default status to active
-        const activeSelect = document.getElementById('mission-active');
-        if (activeSelect) {
-            activeSelect.value = 'true';
+    }
+    
+    // Set default status to active
+    const activeSelect = document.getElementById('mission-active');
+    if (activeSelect) {
+        activeSelect.value = 'true';
             console.log('✅ Default mission status set to active');
         }
         
