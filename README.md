@@ -168,6 +168,15 @@ star-effort/
    firebase deploy --only hosting
    ```
 
+### 🌐 Cache Control (Production)
+
+The app is configured with cache control headers to ensure updates are loaded immediately:
+
+- **HTML & JS files**: No caching (`no-cache, no-store, must-revalidate`)
+- **CSS & Images**: 1-hour cache (`public, max-age=3600`)
+
+This is configured in firebase.json
+
 ### 💻 Local Development
 
 For testing, debugging, or making modifications to the app:
