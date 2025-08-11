@@ -563,14 +563,7 @@ async function displayMissions() {
         if (loadingDiv) loadingDiv.style.display = 'block';
         
         console.log('🔄 Calling getMissions...');
-        
-        // Add timeout to prevent hanging
-        const missionsPromise = getMissions();
-        const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout: getMissions took too long')), 10000)
-        );
-        
-        const missions = await Promise.race([missionsPromise, timeoutPromise]);
+        const missions = await getMissions();
         console.log('✅ Got missions, sorting...');
         
         // Hide loading state
@@ -692,8 +685,8 @@ async function loadMissionsDropdown() {
 }
 
 // Edit mission functionality
-function editMission(missionId) {
-    const missions = getMissions();
+async function editMission(missionId) {
+    const missions = await getMissions();
     const mission = missions.find(m => m.id === missionId);
     if (!mission) return;
     
