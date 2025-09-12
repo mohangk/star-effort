@@ -159,8 +159,6 @@ async function deleteTask(taskId) {
         
         await deleteDoc(doc(db, TASKS_COLLECTION, taskId));
         console.log('Task deleted:', taskId);
-        
-    displayAllTasks(); // Refresh the display
     } catch (error) {
         console.error('Error deleting task:', error);
         alert('❌ Error deleting mission. Please try again.');
@@ -170,15 +168,17 @@ async function deleteTask(taskId) {
 
 
 // Confirm task deletion with space-themed message
-function confirmDeleteTask(taskId, taskDescription, childName) {
+async function confirmDeleteTask(taskId, taskDescription, childName) {
     const message = `🚀 Are you sure you want to abort this space mission?\n\n` +
                    `Mission: "${taskDescription}"\n` +
                    `Space Explorer: ${childName}\n\n` +
                    `⚠️ This action cannot be undone! 🌌`;
     
     if (confirm(message)) {
-        deleteTask(taskId);
+        await deleteTask(taskId);
         alert(`🌟 Mission successfully aborted from the space log! 🌟`);
+        // Always refresh current page for the child
+        renderChildTasksTable(childName, 'refresh');
     }
 }
 
@@ -442,90 +442,185 @@ function formatStarDollars(amount) {
     return `⭐ × ${n} Star Dollars`;
 }
 
-// Display tasks for a specific child (Firebase version)
-async function displayTasksForChild(childName, tableId, noTasksId, totalId) {
-    const loadingId = `${childName.toLowerCase()}-loading`;
-    const loadingDiv = document.getElementById(loadingId);
-    
-    try {
-        // Show loading state
-        if (loadingDiv) loadingDiv.style.display = 'block';
-        
-        const tasks = await getTasks();
-    const childTasks = tasks
-        .filter(task => task.childName === childName)
-        .sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort by date, newest first
+// ============= PAGINATED CHILD TASKS (LAST 10 WITH NAV) =============
 
-    const tableBody = document.querySelector(`#${tableId} tbody`);
-    const noTasksDiv = document.getElementById(noTasksId);
-    const totalSpan = document.getElementById(totalId);
 
-    if (!tableBody) return; // Exit if not on main page
+// Pager state per child (module-level, sequential-only)
+const pagerStateByChild = new Map();
+// state shape per child: { pageSize, currentPage, pageStarts: QueryDocumentSnapshot[], lastDocs: QueryDocumentSnapshot[] }
 
-        // Hide loading state
-        if (loadingDiv) loadingDiv.style.display = 'none';
+async function getTasksForChildPaginated(childName, action = 'init', pageSize = 10) {
+    const { collection, getDocs, query, orderBy, where, limit, startAfter, startAt } = window.firestoreFunctions;
+    const db = window.db;
 
-    // Clear existing rows
-    tableBody.innerHTML = '';
+    // initialize or reuse state
+    let s = pagerStateByChild.get(childName);
+    if (!s || s.pageSize !== pageSize) {
+        s = { pageSize, currentPage: 0, pageStarts: [], lastDocs: [] };
+        pagerStateByChild.set(childName, s);
+    }
 
-    if (childTasks.length === 0) {
-        // Show no tasks message
-        noTasksDiv.style.display = 'block';
-        document.getElementById(tableId).style.display = 'none';
+    // base query
+    let q = query(collection(db, TASKS_COLLECTION), where('childName', '==', childName), orderBy('date', 'desc'));
+
+    // cursor selection
+    if (action === 'next' && s.lastDocs[s.currentPage]) {
+        q = query(q, startAfter(s.lastDocs[s.currentPage]), limit(s.pageSize));
+    } else if (action === 'prev' && s.currentPage > 0) {
+        q = query(q, startAt(s.pageStarts[s.currentPage - 1]), limit(s.pageSize));
+    } else if (action === 'refresh' && s.pageStarts[s.currentPage]) {
+        q = query(q, startAt(s.pageStarts[s.currentPage]), limit(s.pageSize));
     } else {
-        // Hide no tasks message and show table
-        noTasksDiv.style.display = 'none';
-        document.getElementById(tableId).style.display = 'table';
-
-        // Add tasks to table
-        childTasks.forEach(task => {
-            const row = tableBody.insertRow();
-            
-            // Date cell
-            const dateCell = row.insertCell(0);
-            dateCell.textContent = formatDate(task.date);
-            
-            // Description cell
-            const descCell = row.insertCell(1);
-            descCell.textContent = task.missionDescription || task.description;
-            
-            // Star dollars cell
-            const starsCell = row.insertCell(2);
-            starsCell.innerHTML = `${formatStarDollars(task.starDollars)}`;
-            
-            // Actions cell with delete button
-            const actionsCell = row.insertCell(3);
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'delete-btn';
-            deleteBtn.innerHTML = '💥 Abort';
-            deleteBtn.title = 'Abort this space mission';
-            deleteBtn.onclick = () => confirmDeleteTask(task.id, task.missionDescription || task.description, task.childName);
-            actionsCell.appendChild(deleteBtn);
-        });
+        q = query(q, limit(s.pageSize));
     }
 
-    // Calculate and display total star dollars
-    const total = childTasks.reduce((sum, task) => sum + parseInt(task.starDollars), 0);
-    if (totalSpan) {
-        totalSpan.textContent = total;
+    // execute and capture cursors
+    const snap = await getDocs(q);
+    const tasks = [];
+    let firstDoc = null;
+    let lastDoc = null;
+    snap.forEach((docSnap) => {
+        if (!firstDoc) firstDoc = docSnap;
+        lastDoc = docSnap;
+        tasks.push({ id: docSnap.id, ...docSnap.data() });
+    });
+
+    // update state sequentially
+    if (action === 'init') {
+        s.currentPage = 0;
+        s.pageStarts[0] = firstDoc || null;
+        s.lastDocs[0] = lastDoc || null;
+    } else if (action === 'next' && tasks.length > 0) {
+        s.currentPage += 1;
+        s.pageStarts[s.currentPage] = firstDoc || null;
+        s.lastDocs[s.currentPage] = lastDoc || null;
+    } else if (action === 'prev' && s.currentPage > 0) {
+        s.currentPage -= 1;
+    } else if (action === 'refresh') {
+        s.pageStarts[s.currentPage] = firstDoc || s.pageStarts[s.currentPage];
+        s.lastDocs[s.currentPage] = lastDoc || s.lastDocs[s.currentPage];
     }
-    } catch (error) {
-        console.error('Error displaying tasks for', childName, ':', error);
-        
-        // Hide loading state
-        if (loadingDiv) loadingDiv.style.display = 'none';
-        
-        // Show error message in the UI
-        const noTasksDiv = document.getElementById(noTasksId);
-        if (noTasksDiv) {
-            noTasksDiv.innerHTML = '❌ Error loading missions. Please refresh the page.';
-            noTasksDiv.style.display = 'block';
+
+    const pageNumber = s.currentPage;
+    const hasPrev = pageNumber > 0;
+    const hasNext = tasks.length === s.pageSize;
+
+    return { tasks, pageNumber, hasPrev, hasNext };
+}
+
+async function getTotalEarnedForChild(childName) {
+    try {
+        const { collection, getDocs, query, where } = window.firestoreFunctions;
+        const db = window.db;
+        const q = query(collection(db, TASKS_COLLECTION), where('childName', '==', childName));
+        const snap = await getDocs(q);
+        let total = 0;
+        snap.forEach((d) => { total += parseInt(d.data().starDollars || 0, 10); });
+        return total;
+    } catch (e) {
+        console.error('Error calculating total for', childName, e);
+        return 0;
+    }
+}
+
+function getChildTasksDOMElements(childName) {
+    const lower = childName.toLowerCase();
+    const tableId = `${lower}-tasks`;
+    const noTasksId = `${lower}-no-tasks`;
+    const totalId = `${lower}-total`;
+    return {
+        tableId,
+        tableBody: document.querySelector(`#${tableId} tbody`),
+        tableEl: document.getElementById(tableId),
+        noTasksEl: document.getElementById(noTasksId),
+        totalEl: document.getElementById(totalId),
+        loadingEl: document.getElementById(`${lower}-loading`),
+        paginationEl: document.getElementById(`${lower}-pagination`),
+        prevBtn: document.getElementById(`${lower}-prev`),
+        nextBtn: document.getElementById(`${lower}-next`),
+        pageInfoEl: document.getElementById(`${lower}-page-info`)
+    };
+}
+
+function renderChildTasksRows(tasks, ui, childName) {
+    ui.tableBody.innerHTML = '';
+    tasks.forEach(task => {
+        const row = ui.tableBody.insertRow();
+        const dateCell = row.insertCell(0);
+        dateCell.textContent = formatDate(task.date);
+        const descCell = row.insertCell(1);
+        descCell.textContent = task.missionDescription || task.description;
+        const starsCell = row.insertCell(2);
+        starsCell.innerHTML = `${formatStarDollars(task.starDollars)}`;
+        const actionsCell = row.insertCell(3);
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.innerHTML = '💥 Abort';
+        deleteBtn.title = 'Abort this space mission';
+        deleteBtn.onclick = () => confirmDeleteTask(task.id, task.missionDescription || task.description, task.childName);
+        actionsCell.appendChild(deleteBtn);
+    });
+}
+
+async function renderChildTasksTable(childName, action = 'init') {
+    const ui = getChildTasksDOMElements(childName);
+    if (!ui || !ui.tableBody) return;
+    try {
+        if (ui.loadingEl) ui.loadingEl.style.display = 'block';
+        const { tasks, pageNumber, hasPrev, hasNext } = await getTasksForChildPaginated(childName, action, 10);
+
+        // Render
+        if (ui.loadingEl) ui.loadingEl.style.display = 'none';
+        if (tasks.length === 0 && state.currentPage === 0) {
+            if (ui.noTasksEl) ui.noTasksEl.style.display = 'block';
+            if (ui.tableEl) ui.tableEl.style.display = 'none';
+            if (ui.paginationEl) ui.paginationEl.style.display = 'none';
+        } else {
+            if (ui.noTasksEl) ui.noTasksEl.style.display = 'none';
+            if (ui.tableEl) ui.tableEl.style.display = 'table';
+            renderChildTasksRows(tasks, ui, childName);
+            if (ui.paginationEl) ui.paginationEl.style.display = 'flex';
         }
-        
-        // Hide table in case of error
-        const table = document.getElementById(tableId);
-        if (table) table.style.display = 'none';
+
+        // Update page info and buttons
+        if (ui.pageInfoEl) ui.pageInfoEl.textContent = `Page ${pageNumber + 1}`;
+        if (ui.prevBtn) ui.prevBtn.disabled = !hasPrev;
+        if (ui.nextBtn) ui.nextBtn.disabled = !hasNext;
+
+        // Update totals (all-time)
+        const total = await getTotalEarnedForChild(childName);
+        if (ui.totalEl) ui.totalEl.textContent = total;
+
+        // If refreshing and the page is empty (due to deletions), go back one page automatically
+        if ((action === 'refresh') && tasks.length === 0 && pageNumber > 0) {
+            await renderChildTasksTable(childName, 'prev');
+        }
+    } catch (error) {
+        console.error('Error loading page for', childName, error);
+        if (ui.loadingEl) ui.loadingEl.style.display = 'none';
+        if (ui.noTasksEl) {
+            ui.noTasksEl.innerHTML = '❌ Error loading missions. Please refresh the page.';
+            ui.noTasksEl.style.display = 'block';
+        }
+        if (ui.tableEl) ui.tableEl.style.display = 'none';
+        if (ui.paginationEl) ui.paginationEl.style.display = 'none';
     }
+}
+
+
+// Display tasks for a specific child (Firebase version) with pagination (last 10)
+async function displayTasksForChild(childName, tableId, noTasksId, totalId) {
+    const ui = getChildTasksDOMElements(childName);
+    // Wire pagination buttons once
+    if (ui.prevBtn && !ui.prevBtn.dataset.wired) {
+        ui.prevBtn.addEventListener('click', () => renderChildTasksTable(childName, 'prev'));
+        ui.prevBtn.dataset.wired = 'true';
+    }
+    if (ui.nextBtn && !ui.nextBtn.dataset.wired) {
+        ui.nextBtn.addEventListener('click', () => renderChildTasksTable(childName, 'next'));
+        ui.nextBtn.dataset.wired = 'true';
+    }
+    return renderChildTasksTable(childName, 'init');
 }
 
 // Display all tasks on main page (Firebase version)

@@ -30,7 +30,13 @@ import {
     deleteDoc, 
     query, 
     orderBy, 
-    where 
+    where, 
+    limit, 
+    startAfter, 
+    startAt, 
+    limitToLast, 
+    endBefore, 
+    endAt 
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 import { 
@@ -49,7 +55,13 @@ window.firestoreFunctions = {
     deleteDoc,
     query,
     orderBy,
-    where
+    where,
+    limit,
+    startAfter,
+    startAt,
+    limitToLast,
+    endBefore,
+    endAt
 };
 
 window.authFunctions = {
